@@ -1,0 +1,49 @@
+int sub_4007b0(int arg0, int arg1) {
+    alarm(0x3c);
+    sub_400700(0x3c);
+    return 0x0;
+}
+
+
+// have 27 instruction
+int sub_400700(int arg0) {
+    read(0x0, var_80, 0x234);
+    close(0x0);
+    close(0x1);
+    close(0x2);
+    rax = sub_400660(var_80);
+    if (rax == 0x0) {
+            rax = exit(0x1);
+    }
+    add    rsp,0xa0
+    
+    return rax;
+}
+
+
+int sub_400660(int arg0) {
+    inputBuffer = arg0;
+    newBuffer = "";
+    var_1C = 0x8A919FF0;
+    var_24 = 0x4;
+    rsi = var_1C;
+    do {
+            rax = rax - 1;
+            if (rax == 0x0) {
+                break;
+            }
+
+            newBuffer[i] = inputBuffer[i]
+           
+
+    } while (true);
+     
+    if(newBuffer == inputBuffer){
+    	var_C =1;
+    }
+    else {
+            var_C = 0x0;
+    }
+    rax = var_C;
+    return rax;
+}
