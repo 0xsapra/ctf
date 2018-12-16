@@ -8,12 +8,13 @@
 
 * Display processId of process running on port
 `sudo lsof -t -i:9001`
+> List pid on port 9001
 
 # DNS lookup
 
 ### A Recode & DNS lookup 
 
-** A Record is IP address. When we Host a website we point A-Record to IP we want. A-Record Query is basically get IP address.
+'A-Record' is IP address. When we Host a website we point A-Record to IP we want. A-Record Query is basically get IP address.
 
 `nslookup redhat.com`
 
@@ -79,14 +80,56 @@ OR
 
 `dig MX redhat.com`
 
-Values of queries could be :
+Values of query could be :
 * mx      MX Record Query
 * cname   Cname Query
 * ns      Name Server query
-* txt     Some info developer may put while making record
+* txt     Some info developer may put while configuring DNS
 * any     full info 
 
-# CNAME
+### MX Record
+Mail Exchange (MX) records are DNS records that are necessary for delivering email to your address.
+MX Records-This basically tells us which server is responsible for receiving mails sent to that domain name.
+
+Suppose you create a mail to asdf@smartjoules.in ,
+our domain smartjoules.in contains list of mail Servers(calles MX records) 
+```
+aspmx.l.google.com    <= gmail primary mail server
+alt1.aspmx.google.com
+alt2.aspmx.google.com
+alt3.aspmx.google.com
+```
+asdf@smartjoule.in  looks up mail server => aspxl.m.google.com and find user to mail It to
+
+
+### NS Records
+
+Name Server, That is who's gonna resolve our DNS entry?
+We buy a domain, and put the entry 
+```
+mydomainName.com    NS      ns-336.awsdns-42.com.
+mydomainName.com    NS1     ns-337.awsdns-42.com. 
+mydomainName.com    NS2     ns-331.awsdns-42.com. 
+mydomainName.com    NS3     ns-332.awsdns-42.com. 
+```
+So this query means , if there is request to  `mydomainName.com` just goto any of  `ns-337.awsdns-42.com.` and they will get u IP.
+
+And these Nameservers just have a map
+```
+mydomainName.com    IPAddress
+```
+
+So when a user visit smartjoules.in.
+* A-record request for smartjoules goes to root domain server .(dot) 
+* It doesnt have it but it sees the secondary level domain is smartjoules.`in` so send request to `in.`s Nameservers suppose 1.1.2.2
+* `in.` does A-record request for smartjoules.in to NameServer of .in , and it will say yes , goto `ns-336.awsdns-42.com.` with IP x.x.x.x 
+* Request goes to `ns-336.awsdns-42.com` and it have our IP address and it will just return the IP address
+
+
+### TXT records
+TXT Records-This consists of arbitrarily human readable text in a record.
+
+### CNAME
 
 `nslookup -type=cname redhat.com`
 OR
@@ -103,8 +146,7 @@ A CNAME record for www.example.com pointing to example.com
 ```
 > A CNAME record must always point to another domain name, never directly to an IP address.
 
-
-# Authoritative Answer vs Non-Authoritative Answer
+### Authoritative Answer vs Non-Authoritative Answer
 You may also noticed the keyword “Authoritative Answer” and “Non-Authoritative Answer” in the above output.
 
 Any answer that originates from the DNS Server which has the complete zone file information available for the domain is said to be authoritative answer.
@@ -180,4 +222,6 @@ So as attacker we can extract all subdomains/domains from a DNS
 meaning using this DNS server, perform a axfr request to get all related IP/domains subdomains of domain.com
 
 >Usually DNS servers will not allow you to list (axfr) a zone from a command line with dig or nslookup. This is because there is a list of IP addresses that are allowed to perform a zone transfer, and your laptop isn’t on that list. Only the secondary DNS servers are added there. In some cases, the zone is wide open.
+
+
 
