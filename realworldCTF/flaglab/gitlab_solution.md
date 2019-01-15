@@ -156,7 +156,9 @@ exec
 ```
 Putting that in mirror functionality results in a 500 returned from gitlab. This happens due to gitlab trying to render our URL and in failing to do so, refusing to respond with anything meaningful
 
+That’s not helpful given that we still need to trigger the mirror by clicking the little refresh button (or just sending POST to update_now?sync_remote=true)
 
+Doing the latter gives us full RCE.
 
 
 ========
@@ -201,4 +203,5 @@ will end up inserting the value "Asdf" in variable "task" in redis
 
 
 
+#### Reference https://desc0n0cid0.blogspot.com/2019/01/chaining-2-low-impact-bugs-into-gitlab.html
 
