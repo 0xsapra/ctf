@@ -1,49 +1,11 @@
-## Little on Protocol Smuggling
-So basically if we can inject CR-LF anywhere in request headers we get protocol smuggling
 
->  Whats protocol smuggling?
-
-Basically making a call in 1 protocol that is understood by another protocol. In this example we made a HTTP call which is understood by redis.
-
-So if there is newline thing(CRLF) anywhere  in header part, redis ignore all error and execute the redis command
-
-```
-GET /[EXPLOIT-1] HTTP/1.1     <= can be at URL
-Host: 127.0.0.1:6379
-Cookie: [EXPLOIT-2]           <= newline at cookie and we get CRLF
-
-data:[EXPLOIT-3] 			  <= or some data we control
-```
-
-So if we make a HTTP call to redis, obviously it donot understand HTTP protocol but the fun part is it doesnt give error and if it finds valid redis command it will even execute it.
-
-so [EXPLOIT-n] can be like
-
-```
-A\r\n\n
-multi
-lpush task "Asdf"
-exec
-
-A\n\n
-```
-
-ACTUAL request
-```
-GET /A\r\n\n\multi\nlpush\n task "asdf"\nexec\nA\n\n HTTP/1.1
-Host: 127.0.0.1:6379
-```
-
-will end up inserting the value "Asdf" in variable "task" in redis
-
-
-## ==============
-
-Now Lets exploit gitlab/gitlab-ce:11.4.7-ce.0 ssrf+crlf from RWCTF (from code audit to rce) 1-day
+Lets exploit gitlab/gitlab-ce:11.4.7-ce.0 ssrf+crlf from RWCTF (from code audit to rce) 1-day
 
 ## SETUP
 
 we were given a [Docker-Componse file](./docker-componse.yml) file  , so set it up
+
+create a `steg0_initial_root_password` file content 5f98f181c96a69e4bace472640043e4222d17549 (this is secret password)
 
 $ docker-compose up -d 
 run the command being in docker-compose file direcroty

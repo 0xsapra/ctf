@@ -13,7 +13,7 @@ web:
     - '50443:443'
     - '5022:22'
   volumes:
-    - '/Users/Aman/Desktop/asd/srv/gitlab/config:/etc/gitlab'
-    - '/Users/Aman/Desktop/asd/srv/gitlab/logs:/var/log/gitlab'
-    - '/Users/Aman/Desktop/asd/srv/gitlab/data:/var/opt/gitlab'
+    - '/UrSystemPath/srv/config:/etc/gitlab'
+    - '/UrSystemPath/srv/logs:/var/log/gitlab'
+    - '/UrSystemPath/srv/data:/var/opt/gitlab'
     - './steg0_initial_root_password:/steg0_initial_root_password'
