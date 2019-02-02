@@ -5,7 +5,7 @@ Lets exploit gitlab/gitlab-ce:11.4.7-ce.0 ssrf+crlf from RWCTF (from code audit 
 
 we were given a [Docker-Componse file](./docker-componse.yml) file  , so set it up
 
-create a `steg0_initial_root_password` file content 5f98f181c96a69e4bace472640043e4222d17549 (this is secret password)
+create a `steg0_initial_root_password` file with content 5f98f181c96a69e4bace472640043e4222d17549 (this is secret password)
 
 $ docker-compose up -d 
 run the command being in docker-compose file direcroty
