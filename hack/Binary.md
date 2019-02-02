@@ -14,6 +14,8 @@ Binary Exploitation
 
 ## leaking canary
 
+# Format strings
+
 # `__x86_get_pc_thunk_ax`
 
 This call is used in position-independent code on x86. It loads the position of the code into the %ebx register, which allows global objects (which have a fixed offset from the code) to be accessed as an offset from that register.
@@ -23,6 +25,3 @@ Position-independent code is code that can be loaded and executed, unmodified, a
 Note that an equivalent call is not required on x86-64, because that architecture has IP-relative addressing modes (that is, it can directly address memory locations as an offset from the location of the current instruction).
 
 
-
-
-# Format strings

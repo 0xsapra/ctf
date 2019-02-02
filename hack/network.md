@@ -10,9 +10,54 @@
 `sudo lsof -t -i:9001`
 > List pid on port 9001
 
+
+# tcpdump and wireshark
+
+Both the tools are used to view live traffic , wireshark is full flesh beast, tcpdump is little helper tool that can be used to quick debugging to see live traffic on the fly
+
+## TCPDUMP
+
+USAGE
+> $ sudo tcpdump -i [INTERFACE]
+
+example
+```
+sudo tcpdump -i eth0
+```
+
+Some important commands:
+* find traffic by ip
+shows incomming/outgoing traffic for the specifies IPAddress. ex <br/>
+```
+sudo tcpdump host
+```
+
+* Filtering by source and/or destination
+Filter traffic on bases of source or destination IP
+```
+tcpdump src 1.1.1.1
+tcpdump dst 1.0.0.1
+```
+
+* View traffic related to a specific port
+```
+tcpdump port 3389 
+tcpdump src port 1025
+tcpdump portrange 21-23
+
+
+```
+
+* View protocol specific traffic
+To view only icmp requests<br />
+```
+tcpdump icmp
+```
+
+
 # DNS lookup
 
-### A Recode & DNS lookup 
+### A-Recode & DNS lookup 
 
 'A-Record' is IP address. When we Host a website we point A-Record to IP we want. A-Record Query is basically get IP address.
 
@@ -33,7 +78,7 @@ Address: 209.132.183.181   <= “A Record” ( IP Address ) of the domain “red
 
 `dig redhat.com`
 
-```
+```bash
 ; <<>> DiG 9.7.3-RedHat-9.7.3-2.el6 <<>> redhat.com
 ;; global options: +cmd
 ;; Got answer:
@@ -74,13 +119,13 @@ ns3.redhat.com.         73      IN      A       209.132.176.100
 
 # MX,NS, Cname or any query
 
-`$ nslookup -query=mx redhat.com`
+`$ nslookup -query=$QUERY$ redhat.com`
 
 OR
 
-`dig MX redhat.com`
+`dig $QUERY$ redhat.com`
 
-Values of query could be :
+Values of $QUERY$ could be :
 * mx      MX Record Query
 * cname   Cname Query
 * ns      Name Server query
@@ -99,13 +144,14 @@ alt1.aspmx.google.com
 alt2.aspmx.google.com
 alt3.aspmx.google.com
 ```
-asdf@smartjoule.in  looks up mail server => aspxl.m.google.com and find user to mail It to
+* when there is a request mail to asdf@smartjoule.in, it looks up mail server of smartjoules.in and find => aspxl.m.google.com 
+* request goes to aspxl.m.google.com and it searches in its db that does it know asdf@smartjoules.in and if yes forward it to him
 
 
 ### NS Records
 
-Name Server, That is who's gonna resolve our DNS entry?
-We buy a domain, and put the entry 
+Name Server, That's the one who's going to resolve our DNS request
+We buy a domain, and put following entries on our server telling what nameservers to use
 ```
 mydomainName.com    NS      ns-336.awsdns-42.com.
 mydomainName.com    NS1     ns-337.awsdns-42.com. 
